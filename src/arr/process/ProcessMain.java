@@ -1,12 +1,11 @@
 package arr.process;
 
-import java.io.IOException;
-import java.util.Scanner;
-
-import arr.helpers.validate;
 import arr.consult.DataConsultant;
 import arr.helpers.DataManager;
 import arr.helpers.InventoryData;
+import arr.helpers.validate;
+import java.io.IOException;
+import java.util.Scanner;
 
 public class ProcessMain {
 
@@ -28,10 +27,10 @@ public class ProcessMain {
     public void run() throws IOException {
         boolean exitProgram = false;
         while (!exitProgram) {
-            System.out.println("\n===== MENÚ PRINCIPAL DEL SISTEMA DE INVENTARIO =====");
-            System.out.println("1. Crear un Nuevo Inventario");
-            System.out.println("2. Cargar y Gestionar un Inventario Existente");
-            System.out.println("0. Salir del Programa");
+            System.out.println("\n===== MENÚ PRINCIPAL =====");
+            System.out.println("1. Crear nuevo inventario");
+            System.out.println("2. Cargar y gestionar inventario existente");
+            System.out.println("0. Salir");
             System.out.print("Seleccione una opción: ");
             int choice = validate.valInt("", this.scanner);
 
@@ -53,14 +52,14 @@ public class ProcessMain {
     }
 
     private void createNewInventory() throws IOException {
-        System.out.println("\n--- Creación de Nuevo Inventario ---");
-        String newInventoryName = validate.valName("Por favor, ingrese un nombre para este nuevo inventario (ej: 'liga_espanola_2025'):", this.scanner);
+        System.out.println("\n--- Creación de inventario ---");
+        String newInventoryName = validate.valName("Nombre del inventario (ej: 'liga_espanola_2025'):", this.scanner);
         this.inventoryName = newInventoryName;
 
-        System.out.println("\n--- Configuración de Dimensiones ---");
-        int numLeagues = validate.valInt("¿Cuántas ligas de fútbol deseas registrar?", scanner);
-        int numTeams = validate.valInt("¿Cuántos equipos por liga como máximo?", scanner);
-        int numPlayers = validate.valInt("¿Cuántos jugadores por equipo como máximo?", scanner);
+        System.out.println("\n--- Dimensiones ---");
+        int numLeagues = validate.valInt("¿Cuántas ligas registrar?", scanner);
+        int numTeams = validate.valInt("¿Cuántos equipos por liga (máx)?", scanner);
+        int numPlayers = validate.valInt("¿Cuántos jugadores por equipo (máx)?", scanner);
 
         this.leaguesName = new String[numLeagues];
         this.teamsName = new String[numLeagues][numTeams];
@@ -73,18 +72,18 @@ public class ProcessMain {
         initializer.initializeAllArrays(leaguesName, teamsName, teamStats, leaguesTeamsPlayers, availability);
         collector.gatherAllData(leaguesName, teamsName, leaguesTeamsPlayers, availability, scanner);
 
-        System.out.println("\nGuardando nuevo inventario...");
+        System.out.println("\nGuardando inventario...");
         dataManager.saveInventoryState(this.inventoryName, leaguesName, teamsName, leaguesTeamsPlayers, availability);
 
         runPostLoadMenu();
     }
 
     private void loadAndManageInventory() throws IOException {
-        System.out.println("\n--- Cargar Inventario Existente ---");
+        System.out.println("\n--- Cargar inventario ---");
         String[] availableInventories = dataManager.listAvailableInventories();
 
         if (availableInventories.length == 0) {
-            System.out.println("No se encontraron inventarios guardados. Por favor, cree uno nuevo.");
+            System.out.println("No se encontraron inventarios guardados. Cree uno nuevo.");
             return;
         }
 
@@ -93,7 +92,7 @@ public class ProcessMain {
             System.out.printf("%d. %s\n", i + 1, availableInventories[i]);
         }
         System.out.println("0. Cancelar");
-        System.out.print("Seleccione el inventario que desea cargar: ");
+        System.out.print("Seleccione: ");
         int choice = validate.valInt("", this.scanner);
 
         if (choice > 0 && choice <= availableInventories.length) {
@@ -112,19 +111,19 @@ public class ProcessMain {
     }
 
     private void runPostLoadMenu() throws IOException {
-        System.out.printf("\n--- Gestionando Inventario: '%s' ---\n", this.inventoryName);
+        System.out.printf("\n--- Gestionando inventario: '%s' ---\n", this.inventoryName);
         StatsCalculator calculator = new StatsCalculator();
         calculator.calculateAllStats(this.availability, this.teamStats);
 
         boolean exitMenu = false;
         while (!exitMenu) {
             System.out.println("\n--- Menú de Gestión ---");
-            System.out.println("1. Consultar Datos (Búsqueda Recursiva en memoria)");
-            System.out.println("2. Agregar Nueva Liga");
-            System.out.println("3. Generar Reporte Completo del Inventario");
-            System.out.println("4. Guardar Cambios en este Inventario");
-            System.out.println("5. Buscador con estructuras (Archivos → Cola→Pila→Archivo)");
-            System.out.println("0. Volver al Menú Principal");
+            System.out.println("1. Consultar datos del inventario (recursivo en memoria)");
+            System.out.println("2. Agregar nueva liga");
+            System.out.println("3. Generar reporte completo");
+            System.out.println("4. Guardar cambios en este inventario");
+            System.out.println("5. Buscador por archivos (Archivos → Cola→Pila→Archivo)");
+            System.out.println("0. Volver al menú principal");
             System.out.print("Seleccione una opción: ");
             int choice = validate.valInt("", this.scanner);
 
