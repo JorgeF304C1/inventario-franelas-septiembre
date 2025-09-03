@@ -4,10 +4,9 @@ import java.io.IOException;
 import java.io.File;
 import java.nio.file.Paths;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.io.BufferedWriter;
 import java.util.List;
 import java.util.Scanner;
+import java.io.BufferedWriter;
 
 import arr.helpers.validate;
 import arr.ds.Queue;
@@ -23,7 +22,6 @@ public class DataConsultant {
     private int[][][] availability;
     private Scanner scanner;
 
-    // ========= MENÚ DE CONSULTAS EN MEMORIA (tu lógica original) =========
     public void runConsultMenu(String[] leagues, String[][] teams, String[][][] players, int[][][] avail, Scanner sc) throws IOException {
         this.leaguesName = leagues;
         this.teamsName = teams;
@@ -86,30 +84,27 @@ public class DataConsultant {
 
     private void saveQueryReport(String reportPrefix, String content) throws IOException {
         String storageDirectory = Paths.get("").toRealPath().toString() + "/src/arr/storage";
-        validate.utilDirectory(storageDirectory);  // mantengo tu utilidad
+        validate.utilDirectory(storageDirectory);
         String reportName = validate.nameArchiveGenerate(reportPrefix);
         String fullPath = storageDirectory + "/" + reportName + ".txt";
         validate.useArchive(content, fullPath, false);
         System.out.println("-> Reporte guardado en: " + fullPath);
     }
 
-    // ========= BÚSQUEDA EN ARCHIVOS + PIPELINE (cola→pila→archivo) =========
+    // ======== BÚSQUEDA EN ARCHIVOS + PIPELINE (Cola→Pila→Archivo) ========
     public void runFileSearchQueueStack(Scanner sc) throws IOException {
         this.scanner = sc;
         System.out.println("\n--- Buscador con estructuras (Cola→Pila→Archivo) ---");
 
-        // 1) ENCOLAR resultados de búsquedas
         Queue<InventoryItem> queue = new Queue<InventoryItem>();
         boolean more = true;
         while (more) {
             String needle = validate.valName("Buscar (liga/equipo/jugador/serial/patrón de archivo): ", this.scanner);
 
-            // a) Recorrer archivos (recursión NO final) bajo ./src
             String basePath = Paths.get("").toRealPath().toString() + "/src";
             Queue<String> fileHits = new Queue<String>();
             findFilesNonTail(new File(basePath), needle, fileHits);
 
-            // b) Por cada archivo, recorrer líneas (recursión FINAL)
             while (!fileHits.isEmpty()) {
                 String path = fileHits.dequeue();
                 List<String> lines = readAllLines(path);
@@ -118,7 +113,7 @@ public class DataConsultant {
                 while (!lineHits.isEmpty()) {
                     int line = lineHits.dequeue();
                     queue.enqueue(new InventoryItem(
-                        InventoryItem.Kind.PLAYER, // puedes cambiar clasificación si lo deseas
+                        InventoryItem.Kind.PLAYER,
                         path + " : " + (line + 1) + " -> " + lines.get(line)
                     ));
                 }
@@ -128,7 +123,6 @@ public class DataConsultant {
             more = validate.valInt("", this.scanner) == 1;
         }
 
-        // 2) DESENCOLAR y mostrar; 3) APILAR lo mostrado
         System.out.println("\n--- Resultados (DESENCOLADOS) ---");
         Stack<InventoryItem> stack = new Stack<InventoryItem>();
         while (!queue.isEmpty()) {
@@ -137,7 +131,6 @@ public class DataConsultant {
             stack.push(item);
         }
 
-        // 4) DESAPILAR y guardar
         String storagePath = Paths.get("").toRealPath().toString() + "/src/arr/storage";
         ArchiveUtil.ensureDirectory(storagePath);
         ArchiveUtil au = new ArchiveUtil(storagePath);
@@ -156,8 +149,7 @@ public class DataConsultant {
         System.out.println("-> Guardado en: " + storagePath + "/" + outName);
     }
 
-    // ========= Recursión de archivos =========
-    // NO FINAL: directorios
+    // ======== Recursión sobre archivos ========
     private void findFilesNonTail(File dir, String needle, Queue<String> results) throws IOException {
         if (dir == null || !dir.exists()) return;
         File[] entries = dir.listFiles();
@@ -166,25 +158,24 @@ public class DataConsultant {
         for (int i = 0; i < entries.length; i++) {
             File f = entries[i];
             if (f.isDirectory()) {
-                findFilesNonTail(f, needle, results); // NO final
+                findFilesNonTail(f, needle, results);
             } else if (f.getName().toLowerCase().contains(needle.toLowerCase())) {
                 results.enqueue(f.getAbsolutePath());
             }
         }
     }
 
-    // FINAL (tail): líneas
     private void findLinesTail(List<String> lines, String needle, int i, Queue<Integer> results) {
         if (i >= lines.size()) return;
         if (lines.get(i).contains(needle)) results.enqueue(i);
-        findLinesTail(lines, needle, i + 1, results); // tail call
+        findLinesTail(lines, needle, i + 1, results);
     }
 
     private List<String> readAllLines(String path) throws IOException {
         return Files.readAllLines(Paths.get(path));
     }
 
-    // ========= Recursión sobre inventario en memoria (tu parte original) =========
+    // ======== Recursión en memoria (tu lógica original) ========
     private String findLeagueDetailsRecursive(String leagueToFind, int i) {
         if (leaguesName == null || leaguesName.length == 0) return "No hay datos cargados.";
         if (i >= leaguesName.length) return "Liga no encontrada.";
