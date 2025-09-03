@@ -1,4 +1,4 @@
-package arr.domain;
+package arr.io;
 
 public class InventoryItem {
     public enum Kind { LEAGUE, TEAM, PLAYER, MATCH }
