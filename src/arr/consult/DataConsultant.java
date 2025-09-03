@@ -93,88 +93,150 @@ public class DataConsultant {
 
     // ========= BÚSQUEDA EN ARCHIVOS + PIPELINE (Cola→Pila→Archivo) =========
     public void runFileSearchQueueStack(Scanner sc) throws IOException {
-        this.scanner = sc;
-        System.out.println("\n--- Buscador (Archivos → Cola→Pila→Archivo) ---");
+    this.scanner = sc;
+    System.out.println("\n--- Buscador por archivos (Archivos → Cola→Pila→Archivo) ---");
 
-        Queue<InventoryItem> queue = new Queue<InventoryItem>();
-        boolean more = true;
-        while (more) {
-            String needle = validate.valName("Patrón a buscar (en nombres de archivos y líneas): ", this.scanner);
+    // 0) Ámbito
+    String projectRoot = Paths.get("").toRealPath().toString();
+    String srcPath = projectRoot + "/src";
+    String storagePath = projectRoot + "/src/arr/storage";
+    String reportsPath = projectRoot + "/src/arr/reports";
 
-            // a) Recorrer archivos (recursión NO final) bajo ./src
-            String basePath = Paths.get("").toRealPath().toString() + "/src";
-            Queue<String> fileHits = new Queue<String>();
-            findFilesNonTail(new File(basePath), needle, fileHits);
+    System.out.println("Seleccione el ámbito de búsqueda:");
+    System.out.println("1) src (código fuente)");
+    System.out.println("2) storage (inventarios .dat y salidas intermedias)");
+    System.out.println("3) reports (reportes finales)");
+    System.out.println("4) Ruta personalizada");
+    System.out.print("Opción: ");
+    int scope = validate.valInt("", this.scanner);
 
-            // b) Por cada archivo, recorrer líneas (recursión FINAL)
-            while (!fileHits.isEmpty()) {
-                String path = fileHits.dequeue();
-                List<String> lines = readAllLines(path);
-                Queue<Integer> lineHits = new Queue<Integer>();
-                findLinesTail(lines, needle, 0, lineHits);
-                while (!lineHits.isEmpty()) {
-                    int line = lineHits.dequeue();
-                    queue.enqueue(new InventoryItem(
-                        InventoryItem.Kind.LINE_HIT,
-                        path + " : " + (line + 1) + " -> " + lines.get(line)
-                    ));
-                }
-            }
-
-            System.out.print("¿Agregar otra búsqueda? (1=Sí / 0=No): ");
-            more = validate.valInt("", this.scanner) == 1;
-        }
-
-        // 2) Desencolar/mostrar + 3) apilar
-        System.out.println("\n--- Resultados (desencolados) ---");
-        Stack<InventoryItem> stack = new Stack<InventoryItem>();
-        while (!queue.isEmpty()) {
-            InventoryItem item = queue.dequeue();
-            System.out.println(item);
-            stack.push(item);
-        }
-
-        // 4) Desapilar/guardar
-        String storagePath = Paths.get("").toRealPath().toString() + "/src/arr/storage";
-        ArchiveUtil.ensureDirectory(storagePath);
-        ArchiveUtil au = new ArchiveUtil(storagePath);
-        String outName = ArchiveUtil.serialesName(java.util.UUID.randomUUID().toString().substring(0, 8));
-
-        BufferedWriter w = null;
-        try {
-            w = au.openWriter(outName, false);
-            while (!stack.isEmpty()) {
-                w.write(stack.pop().toString());
-                w.newLine();
-            }
-        } finally {
-            if (w != null) try { w.close(); } catch (IOException e) { /* ignore */ }
-        }
-        System.out.println("-> Guardado en: " + storagePath + "/" + outName);
+    String basePath;
+    switch (scope) {
+        case 2: basePath = storagePath; break;
+        case 3: basePath = reportsPath; break;
+        case 4: basePath = validate.valName("Indique ruta absoluta o relativa:", this.scanner); break;
+        case 1:
+        default: basePath = srcPath; break;
     }
 
+    String needle = validate.valName("Patrón a buscar (en nombre de archivo y en líneas): ", this.scanner);
+    System.out.print("Filtrar por extensión? (ej: .txt / .dat / .java) o Enter para ninguno: ");
+    String ext = this.scanner.nextLine();
+    boolean filterByExt = (ext != null && ext.trim().length() > 0);
+    if (filterByExt) ext = ext.trim().toLowerCase();
+
+    // 2) ENCOLAR resultados
+    Queue<InventoryItem> outQueue = new Queue<InventoryItem>();
+    Queue<String> fileHits = new Queue<String>();
+
+    // Recorrido de archivos (NO final)
+    findFilesNonTail(new File(basePath), needle, fileHits, filterByExt ? ext : null);
+
+    // Contadores para mensajes claros
+    int fileHitCount = 0;
+    int lineHitCount = 0;
+
+    // Por cada archivo candidato: encola FILE_HIT y busca líneas (FINAL, case-insensitive)
+    while (!fileHits.isEmpty()) {
+        String path = fileHits.dequeue();
+
+        // el archivo califica; encolamos FILE_HIT siempre
+        outQueue.enqueue(new InventoryItem(InventoryItem.Kind.FILE_HIT, path));
+        fileHitCount++;
+
+        // buscar líneas dentro del archivo
+        List<String> lines = readAllLines(path);
+        Queue<Integer> lineHits = new Queue<Integer>();
+        findLinesTailCI(lines, needle, 0, lineHits);
+
+        while (!lineHits.isEmpty()) {
+            int line = lineHits.dequeue();
+            outQueue.enqueue(new InventoryItem(
+                InventoryItem.Kind.LINE_HIT,
+                path + " : " + (line + 1) + " -> " + lines.get(line)
+            ));
+            lineHitCount++;
+        }
+    }
+
+    // Mensajes cuando no hay nada que mostrar
+    if (fileHitCount == 0 && lineHitCount == 0) {
+        System.out.println("\nNo se encontraron archivos candidatos en " + basePath +
+            " para: \"" + needle + "\"" + (filterByExt ? (" con extensión " + ext) : "") + ".");
+        return;
+    }
+    if (fileHitCount > 0 && lineHitCount == 0) {
+        System.out.println("\nSe encontraron " + fileHitCount + " archivo(s) candidato(s), pero ");
+        System.out.println("**No hubo coincidencias en el texto** dentro de esos archivos para: \"" + needle + "\".");
+        // Aun así, mostramos/guardamos los FILE_HIT para que quede rastro del ámbito revisado
+    }
+
+    // 3) DESENCOLAR / mostrar + APILAR
+    System.out.println("\n--- Resultados (desencolados) ---");
+    Stack<InventoryItem> stack = new Stack<InventoryItem>();
+    while (!outQueue.isEmpty()) {
+        InventoryItem item = outQueue.dequeue();
+        System.out.println(item);
+        stack.push(item);
+    }
+
+    // 4) DESAPILAR / guardar
+    ArchiveUtil.ensureDirectory(storagePath);
+    ArchiveUtil au = new ArchiveUtil(storagePath);
+    String outName = ArchiveUtil.serialesName(java.util.UUID.randomUUID().toString().substring(0, 8));
+
+    BufferedWriter w = null;
+    try {
+        w = au.openWriter(outName, false);
+        while (!stack.isEmpty()) {
+            w.write(stack.pop().toString());
+            w.newLine();
+        }
+    } finally {
+        if (w != null) try { w.close(); } catch (IOException e) { /* ignore */ }
+    }
+    System.out.println("-> Guardado en: " + storagePath + "/" + outName);
+}
+
     // ========= Recursión sobre archivos =========
-    // NO FINAL: directorios
-    private void findFilesNonTail(File dir, String needle, Queue<String> results) throws IOException {
+    // NO FINAL: directorios (ahora con filtro de extensión opcional)
+    private void findFilesNonTail(File dir, String needle, Queue<String> results, String extensionOrNull) throws IOException {
         if (dir == null || !dir.exists()) return;
         File[] entries = dir.listFiles();
         if (entries == null) return;
 
+        String nlow = needle.toLowerCase();
         for (int i = 0; i < entries.length; i++) {
             File f = entries[i];
             if (f.isDirectory()) {
-                findFilesNonTail(f, needle, results);
-            } else if (f.getName().toLowerCase().contains(needle.toLowerCase())) {
-                results.enqueue(f.getAbsolutePath());
+                findFilesNonTail(f, needle, results, extensionOrNull);
+            } else {
+                String name = f.getName();
+                String nameLow = name.toLowerCase();
+                if (nameLow.contains(nlow)) {
+                    if (extensionOrNull == null || nameLow.endsWith(extensionOrNull)) {
+                        results.enqueue(f.getAbsolutePath());
+                    }
+                } else {
+                    // Si no coincide por nombre, aún puede pasar el filtro por extensión (para buscar solo en cierto tipo)
+                    if (extensionOrNull != null && nameLow.endsWith(extensionOrNull)) {
+                        results.enqueue(f.getAbsolutePath()); // Permite revisar líneas aunque no matchee el nombre
+                    }
+                }
             }
         }
     }
 
-    // FINAL (tail): líneas
-    private void findLinesTail(List<String> lines, String needle, int i, Queue<Integer> results) {
+    // FINAL (tail) case-insensitive en líneas
+    private void findLinesTailCI(List<String> lines, String needle, int i, Queue<Integer> results) {
         if (i >= lines.size()) return;
-        if (lines.get(i).contains(needle)) results.enqueue(i);
-        findLinesTail(lines, needle, i + 1, results);
+        String line = lines.get(i);
+        if (line != null) {
+            String l = line.toLowerCase();
+            String n = needle.toLowerCase();
+            if (l.contains(n)) results.enqueue(i);
+        }
+        findLinesTailCI(lines, needle, i + 1, results);
     }
 
     private List<String> readAllLines(String path) throws IOException {
