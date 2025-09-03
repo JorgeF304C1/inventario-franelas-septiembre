@@ -1,0 +1,3 @@
+Liga: hola
+	Equipo: lolo
+		Jugador: lol | Stock: 2

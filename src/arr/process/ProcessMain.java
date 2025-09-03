@@ -1,11 +1,12 @@
 package arr.process;
 
+import java.io.IOException;
+import java.util.Scanner;
+
+import arr.helpers.validate;
 import arr.consult.DataConsultant;
 import arr.helpers.DataManager;
 import arr.helpers.InventoryData;
-import arr.helpers.validate;
-import java.io.IOException;
-import java.util.Scanner;
 
 public class ProcessMain {
 
@@ -123,6 +124,8 @@ public class ProcessMain {
             System.out.println("3. Generar reporte completo");
             System.out.println("4. Guardar cambios en este inventario");
             System.out.println("5. Buscador por archivos (Archivos → Cola→Pila→Archivo)");
+            System.out.println("6. Editar datos (liga/equipo/jugador/stock)");
+            System.out.println("7. Eliminar datos (liga/equipo/jugador)");
             System.out.println("0. Volver al menú principal");
             System.out.print("Seleccione una opción: ");
             int choice = validate.valInt("", this.scanner);
@@ -152,6 +155,16 @@ public class ProcessMain {
                 case 5: {
                     DataConsultant consultant = new DataConsultant();
                     consultant.runFileSearchQueueStack(this.scanner);
+                    break;
+                }
+                case 6: {
+                    DataEditor.runEditMenu(leaguesName, teamsName, leaguesTeamsPlayers, availability, scanner);
+                    calculator.calculateAllStats(this.availability, this.teamStats);
+                    break;
+                }
+                case 7: {
+                    DataRemover.runDeleteMenu(leaguesName, teamsName, leaguesTeamsPlayers, availability, scanner);
+                    calculator.calculateAllStats(this.availability, this.teamStats);
                     break;
                 }
                 case 0: {
