@@ -2,7 +2,9 @@ package arr.process;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+
 import arr.helpers.validate;
+import arr.io.ArchiveUtil;
 
 // Principio de Responsabilidad Única: Esta clase SOLO genera el reporte completo.
 public class CompleteReportGenerator {
@@ -17,18 +19,22 @@ public class CompleteReportGenerator {
             return;
         }
 
-        // 1. Define y crea el directorio base para todos los reportes.
+        // 1. Directorio base para todos los reportes.
         String reportsDirectory = Paths.get("").toRealPath().toString() + "/src/arr/reports";
-        validate.utilDirectory(reportsDirectory);
+        ArchiveUtil.ensureDirectory(reportsDirectory);
 
-        // 2. Generar el nombre y la ruta del archivo.
-        String reportName = validate.nameArchiveGenerate("complete_inventory_report");
-        String reportPath = reportsDirectory + "/" + reportName + ".txt";
+        // 2. Generar el nombre y la ruta del archivo (formato requerido).
+        String reportName = ArchiveUtil.safeName("complete_inventory_report", serial());
+        String reportPath = reportsDirectory + "/" + reportName;
         System.out.println("\nGenerando reporte completo...");
 
         // 3. Escribir el contenido en el archivo.
         writeInventoryTable(leaguesName, teamsName, teamStats, leaguesTeamsPlayers, availability, reportPath);
         System.out.println("-> Reporte completo guardado en: " + reportPath);
+    }
+
+    private static String serial() {
+        return java.util.UUID.randomUUID().toString().substring(0, 8);
     }
 
     private void writeInventoryTable(String[] leaguesName, String[][] teamsName, int[][] teamStats, String[][][] leaguesTeamsPlayers, int[][][] availability, String route) throws IOException {
@@ -52,7 +58,7 @@ public class CompleteReportGenerator {
             validate.useArchive(String.format(contentFormat, leaguesName[i].toUpperCase(), "", "", ""), route, true);
             if (teamsName[i] == null) continue;
             for (int j = 0; j < teamsName[i].length; j++) {
-                if(teamsName[i][j] == null || teamsName[i][j].isEmpty()) continue;
+                if (teamsName[i][j] == null || teamsName[i][j].isEmpty()) continue;
                 validate.useArchive(String.format(contentFormat, "", teamsName[i][j], "", ""), route, true);
                 if (leaguesTeamsPlayers[i][j] == null) continue;
                 for (int k = 0; k < leaguesTeamsPlayers[i][j].length; k++) {
@@ -60,7 +66,7 @@ public class CompleteReportGenerator {
                     String stock = String.valueOf(availability[i][j][k]);
                     validate.useArchive(String.format(contentFormat, "", "", player, stock), route, true);
                 }
-                
+
                 String summaryFormat = "| %-" + (leagueWidth + teamWidth + playerWidth + 6) + "s | %" + stockWidth + "s |";
                 String totalLabel = "TOTAL EQUIPO ->";
                 String totalStock = String.valueOf(teamStats[i][j]);

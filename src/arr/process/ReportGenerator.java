@@ -2,14 +2,18 @@ package arr.process;
 
 import java.io.IOException;
 import java.nio.file.Paths;
-import arr.helpers.validate;
 
-// Principio de Responsabilidad Única: Esta clase SOLO genera reportes.
+import arr.helpers.validate;
+import arr.io.ArchiveUtil;
+
+/**
+ * Genera reportes en rutas y con nombres estandarizados.
+ */
 public class ReportGenerator {
 
     /**
-     * MÉTODO CORREGIDO: Genera múltiples reportes, cada uno en su propio archivo
-     * con un nombre único (fecha, hora y serial).
+     * Genera múltiples reportes con nombre único (fecha, hora y serial)
+     * y directorio garantizado.
      */
     public void generateAllReports(String[] leaguesName, String[][] teamsName, String[][][] leaguesTeamsPlayers, int[][][] availability, int[][] teamStats) throws IOException {
         if (leaguesName == null || teamsName == null || leaguesTeamsPlayers == null || availability == null || teamStats == null) {
@@ -17,27 +21,30 @@ public class ReportGenerator {
             return;
         }
 
-        // 1. Define y crea el directorio base para todos los reportes.
+        // Directorio base
         String reportsDirectory = Paths.get("").toRealPath().toString() + "/src/arr/storage";
-        validate.utilDirectory(reportsDirectory);
+        ArchiveUtil.ensureDirectory(reportsDirectory);
 
-        // --- 2. Generar Reporte en formato de Tabla ---
-        String tableReportName = validate.nameArchiveGenerate("inventory_table_report");
-        String tableReportPath = reportsDirectory + "/" + tableReportName + ".txt";
+        // --- Reporte en formato de Tabla ---
+        String tableReportName = ArchiveUtil.safeName("inventory_table_report", serial());
+        String tableReportPath = reportsDirectory + "/" + tableReportName;
         System.out.println("\nGenerando reporte en formato de tabla...");
         showInventoryTable(leaguesName, teamsName, leaguesTeamsPlayers, availability, teamStats, tableReportPath);
         System.out.println("-> Reporte de tabla guardado en: " + tableReportPath);
 
-        // --- 3. Generar Reporte con estructura Recursiva ---
-        String recursiveReportName = validate.nameArchiveGenerate("inventory_recursive_report");
-        String recursiveReportPath = reportsDirectory + "/" + recursiveReportName + ".txt";
+        // --- Reporte con estructura Recursiva ---
+        String recursiveReportName = ArchiveUtil.safeName("inventory_recursive_report", serial());
+        String recursiveReportPath = reportsDirectory + "/" + recursiveReportName;
         System.out.println("Generando reporte con estructura recursiva...");
         displayInventoryRecursively(leaguesName, teamsName, leaguesTeamsPlayers, availability, recursiveReportPath);
         System.out.println("-> Reporte recursivo guardado en: " + recursiveReportPath);
     }
 
+    private static String serial() {
+        return java.util.UUID.randomUUID().toString().substring(0, 8);
+    }
+
     private void showInventoryTable(String[] leaguesName, String[][] teamsName, String[][][] leaguesTeamsPlayers, int[][][] availability, int[][] teamStats, String route) throws IOException {
-        // (El código interno de este método no cambia, ya que recibe la ruta completa y única)
         int leagueWidth = 20, teamWidth = 25, playerWidth = 25, stockWidth = 8;
         int totalWidth = leagueWidth + teamWidth + playerWidth + stockWidth + 5 + 8;
         String border = "=".repeat(totalWidth);
@@ -58,51 +65,43 @@ public class ReportGenerator {
             validate.useArchive(String.format(contentFormat, leaguesName[i].toUpperCase(), "", "", ""), route, true);
             if (teamsName[i] == null) continue;
             for (int j = 0; j < teamsName[i].length; j++) {
+                if (teamsName[i][j] == null || teamsName[i][j].isEmpty()) continue;
                 validate.useArchive(String.format(contentFormat, "", teamsName[i][j], "", ""), route, true);
                 if (leaguesTeamsPlayers[i][j] == null) continue;
+                int total = 0;
                 for (int k = 0; k < leaguesTeamsPlayers[i][j].length; k++) {
                     String player = leaguesTeamsPlayers[i][j][k];
                     String stock = String.valueOf(availability[i][j][k]);
+                    total += availability[i][j][k];
                     validate.useArchive(String.format(contentFormat, "", "", player, stock), route, true);
                 }
-                if (teamsName[i][j] != null && !teamsName[i][j].isEmpty()) {
-                    String summaryFormat = "| %-" + (leagueWidth + teamWidth + playerWidth + 6) + "s | %" + stockWidth + "s |";
-                    String totalLabel = "TOTAL EQUIPO ->";
-                    String totalStock = String.valueOf(teamStats[i][j]);
-                    validate.useArchive(String.format(summaryFormat, totalLabel, totalStock), route, true);
-                    validate.useArchive(subBorder, route, true);
-                }
+                String summaryFormat = "| %-" + (leagueWidth + teamWidth + playerWidth + 6) + "s | %" + stockWidth + "s |";
+                String totalLabel = "TOTAL EQUIPO ->";
+                String totalStock = String.valueOf(total);
+                validate.useArchive(String.format(summaryFormat, totalLabel, totalStock), route, true);
+                validate.useArchive(subBorder, route, true);
             }
         }
     }
 
     private void displayInventoryRecursively(String[] leaguesName, String[][] teamsName, String[][][] leaguesTeamsPlayers, int[][][] availability, String route) throws IOException {
-        // (El código interno de este método no cambia)
-        validate.useArchive("\n\n--- REPORTE RECURSIVO ---", route, true);
-        displayLeaguesRecursive(0, leaguesName, teamsName, leaguesTeamsPlayers, availability, route);
-        validate.useArchive("--- FIN REPORTE RECURSIVO ---", route, true);
+        // Representación recursiva simple (profundidad L->E->P)
+        writeRecursive(leaguesName, teamsName, leaguesTeamsPlayers, availability, 0, 0, 0, route);
     }
 
-    private void displayLeaguesRecursive(int leagueIndex, String[] leagues, String[][] teams, String[][][] players, int[][][] availability, String route) throws IOException {
-        if (leagueIndex >= leagues.length) return;
-        validate.useArchive("LIGA: " + leagues[leagueIndex], route, true);
-        displayTeamsRecursive(leagueIndex, 0, teams, players, availability, route);
-        displayLeaguesRecursive(leagueIndex + 1, leagues, teams, players, availability, route);
-    }
+    private void writeRecursive(String[] leagues, String[][] teams, String[][][] players, int[][][] availability, int i, int j, int k, String route) throws IOException {
+        if (i >= leagues.length) return; // fin
+        if (j >= teams[i].length) { writeRecursive(leagues, teams, players, availability, i + 1, 0, 0, route); return; }
+        if (k >= players[i][j].length) { writeRecursive(leagues, teams, players, availability, i, j + 1, 0, route); return; }
 
-    private void displayTeamsRecursive(int leagueIndex, int teamIndex, String[][] teams, String[][][] players, int[][][] availability, String route) throws IOException {
-        if (teams[leagueIndex] == null || teamIndex >= teams[leagueIndex].length) return;
-        validate.useArchive("\tEQUIPO: " + teams[leagueIndex][teamIndex], route, true);
-        displayPlayersRecursive(leagueIndex, teamIndex, 0, players, availability, route);
-        displayTeamsRecursive(leagueIndex, teamIndex + 1, teams, players, availability, route);
-    }
+        if (k == 0 && j == 0) {
+            validate.useArchive("\nLIGA: " + leagues[i], route, true);
+        }
+        if (k == 0) {
+            validate.useArchive("  EQUIPO: " + teams[i][j], route, true);
+        }
+        validate.useArchive("    JUGADOR: " + players[i][j][k] + " | STOCK: " + availability[i][j][k], route, true);
 
-    private void displayPlayersRecursive(int leagueIndex, int teamIndex, int playerIndex, String[][][] players, int[][][] availability, String route) throws IOException {
-        if (players[leagueIndex][teamIndex] == null || playerIndex >= players[leagueIndex][teamIndex].length) return;
-        String playerInfo = String.format("\t\t- Jugador: %s (Stock: %d)", 
-            players[leagueIndex][teamIndex][playerIndex], 
-            availability[leagueIndex][teamIndex][playerIndex]);
-        validate.useArchive(playerInfo, route, true);
-        displayPlayersRecursive(leagueIndex, teamIndex, playerIndex + 1, players, availability, route);
+        writeRecursive(leagues, teams, players, availability, i, j, k + 1, route);
     }
 }
