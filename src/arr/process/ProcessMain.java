@@ -1,15 +1,15 @@
 package arr.process;
 
-import arr.consult.DataConsultant;
-import arr.helpers.DataManager;
-import arr.helpers.InventoryData;
-import arr.helpers.validate;
 import java.io.IOException;
 import java.util.Scanner;
 
+import arr.helpers.validate;
+import arr.consult.DataConsultant;
+import arr.helpers.DataManager;
+import arr.helpers.InventoryData;
+
 public class ProcessMain {
 
-    // --- Variables de Instancia ---
     private String inventoryName;
     private String[] leaguesName;
     private String[][] teamsName;
@@ -20,13 +20,11 @@ public class ProcessMain {
     private Scanner scanner;
     private DataManager dataManager;
 
-    // --- Constructor ---
     public ProcessMain() {
         this.scanner = new Scanner(System.in);
         this.dataManager = new DataManager();
     }
 
-    // --- Flujo Principal del Programa ---
     public void run() throws IOException {
         boolean exitProgram = false;
         while (!exitProgram) {
@@ -154,7 +152,6 @@ public class ProcessMain {
                 }
                 case 5: {
                     DataConsultant consultant = new DataConsultant();
-                    // No necesita el inventario para el file-search, pero reuso scanner del programa
                     consultant.runFileSearchQueueStack(this.scanner);
                     break;
                 }

@@ -6,29 +6,27 @@ import java.nio.file.Paths;
 import arr.helpers.validate;
 import arr.io.ArchiveUtil;
 
-// Principio de Responsabilidad Única: Esta clase SOLO genera el reporte completo.
 public class CompleteReportGenerator {
 
-    /**
-     * Genera un único reporte completo en formato de tabla,
-     * guardado en un archivo individual con nombre único.
-     */
+    private static String rep(char c, int n) {
+        StringBuilder sb = new StringBuilder(n);
+        for (int i = 0; i < n; i++) sb.append(c);
+        return sb.toString();
+    }
+
     public void generate(String[] leaguesName, String[][] teamsName, int[][] teamStats, String[][][] leaguesTeamsPlayers, int[][][] availability) throws IOException {
         if (leaguesName == null) {
             System.out.println("No hay datos cargados para generar un reporte.");
             return;
         }
 
-        // 1. Directorio base para todos los reportes.
         String reportsDirectory = Paths.get("").toRealPath().toString() + "/src/arr/reports";
         ArchiveUtil.ensureDirectory(reportsDirectory);
 
-        // 2. Generar el nombre y la ruta del archivo (formato requerido).
         String reportName = ArchiveUtil.safeName("complete_inventory_report", serial());
         String reportPath = reportsDirectory + "/" + reportName;
         System.out.println("\nGenerando reporte completo...");
 
-        // 3. Escribir el contenido en el archivo.
         writeInventoryTable(leaguesName, teamsName, teamStats, leaguesTeamsPlayers, availability, reportPath);
         System.out.println("-> Reporte completo guardado en: " + reportPath);
     }
@@ -40,8 +38,8 @@ public class CompleteReportGenerator {
     private void writeInventoryTable(String[] leaguesName, String[][] teamsName, int[][] teamStats, String[][][] leaguesTeamsPlayers, int[][][] availability, String route) throws IOException {
         int leagueWidth = 20, teamWidth = 25, playerWidth = 25, stockWidth = 8;
         int totalWidth = leagueWidth + teamWidth + playerWidth + stockWidth + 5 + 8;
-        String border = "=".repeat(totalWidth);
-        String subBorder = "-".repeat(totalWidth);
+        String border = rep('=', totalWidth);
+        String subBorder = rep('-', totalWidth);
 
         validate.useArchive(border, route, true);
         String title = "REPORTE DE INVENTARIO COMPLETO";

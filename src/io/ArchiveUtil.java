@@ -1,23 +1,29 @@
-package arr.io;
+package io;
 
-import java.io.*;
-import java.nio.file.*;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.UncheckedIOException;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 public final class ArchiveUtil {
-    private final Path baseDir;
+    private final String baseDir;
 
     public ArchiveUtil(String router) {
-        if (router == null || router.isBlank()) throw new IllegalArgumentException("router");
-        this.baseDir = Path.of(router);
-        ensureDirectory(this.baseDir.toString());
+        if (router == null || router.trim().isEmpty()) throw new IllegalArgumentException("router");
+        this.baseDir = router;
+        ensureDirectory(this.baseDir);
     }
 
     public static void ensureDirectory(String dir) {
         try {
-            Files.createDirectories(Path.of(dir));
+            Files.createDirectories(Paths.get(dir));
         } catch (IOException e) {
             throw new UncheckedIOException("No se pudo crear directorio: " + dir, e);
         }
@@ -25,9 +31,8 @@ public final class ArchiveUtil {
 
     public BufferedWriter openWriter(String filename, boolean append) {
         try {
-            Path p = baseDir.resolve(filename);
-            ensureDirectory(baseDir.toString());
-            return new BufferedWriter(new FileWriter(p.toFile(), append));
+            ensureDirectory(baseDir);
+            return new BufferedWriter(new FileWriter(baseDir + "/" + filename, append));
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -35,20 +40,19 @@ public final class ArchiveUtil {
 
     public BufferedReader openReader(String filename) {
         try {
-            Path p = baseDir.resolve(filename);
-            return new BufferedReader(new FileReader(p.toFile()));
+            return new BufferedReader(new FileReader(baseDir + "/" + filename));
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
     }
 
-
+    /** nombre_fechaActual:TiempoActual_Serial.txt */
     public static String safeName(String base, String serial) {
         String stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd:HHmmss"));
         return base + "_" + stamp + "_" + serial + ".txt";
     }
 
-
+    /** serialesArchivos_fechaActual_serialUnico.txt */
     public static String serialesName(String serial) {
         String stamp = LocalDate.now().toString();
         return "serialesArchivos_" + stamp + "_" + serial + ".txt";

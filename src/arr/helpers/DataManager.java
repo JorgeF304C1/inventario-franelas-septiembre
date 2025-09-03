@@ -1,6 +1,11 @@
 package arr.helpers;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.nio.file.Paths;
 
 import arr.io.ArchiveUtil;
@@ -15,42 +20,38 @@ public class DataManager {
             path = Paths.get("").toRealPath().toString() + "/src/arr/storage";
         } catch (IOException e) {
             System.err.println("Error crítico al obtener la ruta del proyecto.");
-            path = "storage"; // Fallback a una ruta relativa
+            path = "storage";
         }
         this.STORAGE_PATH = path;
         ArchiveUtil.ensureDirectory(this.STORAGE_PATH);
     }
 
-    /**
-     * Escanea el directorio de almacenamiento y devuelve los nombres
-     * de los archivos de inventario (.dat) disponibles como ARREGLO.
-     */
     public String[] listAvailableInventories() {
         File storageDir = new File(STORAGE_PATH);
-        File[] files = storageDir.listFiles((dir, name) -> name.toLowerCase().endsWith(".dat"));
+        File[] files = storageDir.listFiles(new java.io.FilenameFilter() {
+            public boolean accept(File dir, String name) {
+                return name.toLowerCase().endsWith(".dat");
+            }
+        });
         if (files == null || files.length == 0) return new String[0];
 
         String[] inventoryFiles = new String[files.length];
         int idx = 0;
-        for (File file : files) {
-            inventoryFiles[idx++] = file.getName();
+        for (int i = 0; i < files.length; i++) {
+            inventoryFiles[idx++] = files[i].getName();
         }
         return inventoryFiles;
     }
 
-    /**
-     * Guarda el estado completo del inventario en un archivo .dat específico.
-     * @param inventoryName El nombre del archivo (ej. "liga_2025.dat")
-     */
     public void saveInventoryState(String inventoryName, String[] leaguesName, String[][] teamsName, String[][][] leaguesTeamsPlayers, int[][][] availability) throws IOException {
         File file = new File(STORAGE_PATH + "/" + inventoryName.replace(".dat", "") + ".dat");
 
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
-            // Guarda las dimensiones primero
+        BufferedWriter writer = null;
+        try {
+            writer = new BufferedWriter(new FileWriter(file));
             writer.write(leaguesName.length + "," + teamsName[0].length + "," + leaguesTeamsPlayers[0][0].length);
             writer.newLine();
 
-            // Guarda los datos
             for (int i = 0; i < leaguesName.length; i++) {
                 writer.write("LIGA:" + leaguesName[i]); writer.newLine();
                 for (int j = 0; j < teamsName[i].length; j++) {
@@ -62,13 +63,11 @@ public class DataManager {
                 }
             }
             System.out.println("-> Inventario '" + file.getName() + "' guardado exitosamente.");
+        } finally {
+            if (writer != null) try { writer.close(); } catch (IOException e) { /* ignore */ }
         }
     }
 
-    /**
-     * Carga el estado completo de un inventario desde un archivo .dat.
-     * @param inventoryName nombre del archivo a cargar.
-     */
     public InventoryData loadInventoryState(String inventoryName) throws IOException {
         File file = new File(STORAGE_PATH + "/" + inventoryName);
 
@@ -78,8 +77,10 @@ public class DataManager {
         }
 
         System.out.println("Cargando inventario '" + inventoryName + "'...");
-        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-            // Dimensiones
+        BufferedReader reader = null;
+        try {
+            reader = new BufferedReader(new FileReader(file));
+
             String line = reader.readLine();
             String[] dimensions = line.split(",");
             int numLeagues = Integer.parseInt(dimensions[0]);
@@ -104,6 +105,8 @@ public class DataManager {
             }
             System.out.println("-> Inventario cargado exitosamente.");
             return new InventoryData(leaguesName, teamsName, leaguesTeamsPlayers, availability);
+        } finally {
+            if (reader != null) try { reader.close(); } catch (IOException e) { /* ignore */ }
         }
     }
 }

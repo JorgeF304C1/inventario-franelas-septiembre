@@ -1,6 +1,5 @@
 package arr.domain;
 
-
 public class InventoryItem {
     public enum Kind { LEAGUE, TEAM, PLAYER, MATCH }
 
@@ -9,7 +8,7 @@ public class InventoryItem {
 
     public InventoryItem(Kind kind, String summary) {
         if (kind == null) throw new IllegalArgumentException("kind");
-        if (summary == null || summary.isBlank()) throw new IllegalArgumentException("summary");
+        if (summary == null || summary.trim().isEmpty()) throw new IllegalArgumentException("summary");
         this.kind = kind; this.summary = summary;
     }
 

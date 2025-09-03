@@ -6,33 +6,29 @@ import java.nio.file.Paths;
 import arr.helpers.validate;
 import arr.io.ArchiveUtil;
 
-/**
- * Genera reportes en rutas y con nombres estandarizados.
- */
 public class ReportGenerator {
 
-    /**
-     * Genera múltiples reportes con nombre único (fecha, hora y serial)
-     * y directorio garantizado.
-     */
+    private static String rep(char c, int n) {
+        StringBuilder sb = new StringBuilder(n);
+        for (int i = 0; i < n; i++) sb.append(c);
+        return sb.toString();
+    }
+
     public void generateAllReports(String[] leaguesName, String[][] teamsName, String[][][] leaguesTeamsPlayers, int[][][] availability, int[][] teamStats) throws IOException {
         if (leaguesName == null || teamsName == null || leaguesTeamsPlayers == null || availability == null || teamStats == null) {
             validate.addError("Error Crítico: Datos nulos al intentar generar reportes.");
             return;
         }
 
-        // Directorio base
         String reportsDirectory = Paths.get("").toRealPath().toString() + "/src/arr/storage";
         ArchiveUtil.ensureDirectory(reportsDirectory);
 
-        // --- Reporte en formato de Tabla ---
         String tableReportName = ArchiveUtil.safeName("inventory_table_report", serial());
         String tableReportPath = reportsDirectory + "/" + tableReportName;
         System.out.println("\nGenerando reporte en formato de tabla...");
         showInventoryTable(leaguesName, teamsName, leaguesTeamsPlayers, availability, teamStats, tableReportPath);
         System.out.println("-> Reporte de tabla guardado en: " + tableReportPath);
 
-        // --- Reporte con estructura Recursiva ---
         String recursiveReportName = ArchiveUtil.safeName("inventory_recursive_report", serial());
         String recursiveReportPath = reportsDirectory + "/" + recursiveReportName;
         System.out.println("Generando reporte con estructura recursiva...");
@@ -47,8 +43,8 @@ public class ReportGenerator {
     private void showInventoryTable(String[] leaguesName, String[][] teamsName, String[][][] leaguesTeamsPlayers, int[][][] availability, int[][] teamStats, String route) throws IOException {
         int leagueWidth = 20, teamWidth = 25, playerWidth = 25, stockWidth = 8;
         int totalWidth = leagueWidth + teamWidth + playerWidth + stockWidth + 5 + 8;
-        String border = "=".repeat(totalWidth);
-        String subBorder = "-".repeat(totalWidth);
+        String border = rep('=', totalWidth);
+        String subBorder = rep('-', totalWidth);
 
         validate.useArchive(border, route, true);
         String title = "REPORTE DE INVENTARIO DE CAMISETAS (TABLA)";
@@ -85,12 +81,11 @@ public class ReportGenerator {
     }
 
     private void displayInventoryRecursively(String[] leaguesName, String[][] teamsName, String[][][] leaguesTeamsPlayers, int[][][] availability, String route) throws IOException {
-        // Representación recursiva simple (profundidad L->E->P)
         writeRecursive(leaguesName, teamsName, leaguesTeamsPlayers, availability, 0, 0, 0, route);
     }
 
     private void writeRecursive(String[] leagues, String[][] teams, String[][][] players, int[][][] availability, int i, int j, int k, String route) throws IOException {
-        if (i >= leagues.length) return; // fin
+        if (i >= leagues.length) return;
         if (j >= teams[i].length) { writeRecursive(leagues, teams, players, availability, i + 1, 0, 0, route); return; }
         if (k >= players[i][j].length) { writeRecursive(leagues, teams, players, availability, i, j + 1, 0, route); return; }
 
